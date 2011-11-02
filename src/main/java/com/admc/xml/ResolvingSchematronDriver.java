@@ -42,7 +42,7 @@ public class ResolvingSchematronDriver extends Thread {
     public static final int EXCEPTION_STATUS = 127;  // Highest shell var value
 
     /**
-     * @return the final value of the exitStatus as set by the run() method.
+     * Exits with the final value of the exitStatus as set by the run() method.
      *
      * @see #run()
      */
