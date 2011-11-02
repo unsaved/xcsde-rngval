@@ -1,0 +1,184 @@
+defaultTasks 'jar'
+
+project['repos.useMaven'] = 'true'
+apply from: 'common.gradle'
+apply plugin: 'java'
+apply plugin: 'maven'
+
+compileJava.options.debug = (!project.hasProperty('javac.debug')
+            || Boolean.parseBoolean(project.property('javac.debug')))
+sourceCompatibility = '1.2'
+targetCompatibility = '1.2'
+description = "Modern build of the the aborted RELAX-NG- + Schematron-capable validator from Sun's MSV project"
+
+configurations { compileOnly }
+
+// De-transify dependencies. We aim for precision, not laziness.
+//for (Configuration c in configurations) c.transitive = false
+// We now let 'ivy.xml' configure transitiveness.
+
+project.rtLibs = null
+jar { doFirst {
+    project.rtLibs = []
+    Set<File> runtimeOnlyFiles = configurations.compileOnly.files as Set<File>
+    configurations.runtime.files.collect {
+        if (!runtimeOnlyFiles.contains(it)) project.rtLibs << it.name
+    }
+    String implVendor = (project.hasProperty('organization')
+                        ? project.organization
+                        : System.properties['user.name'])
+    jar { manifest { attributes(
+        'Main-Class': 'com.sun.msv.schematron.Driver',
+        'Class-Path': project.rtLibs.join(' '),
+        'Specification-Title': 'Relames',
+        'Specification-Version': project.upstreamVersion,
+        'Specification-Vendor': 'Sun Microsystems, Inc.',
+        'Implementation-Title': 'Relames executable jar',
+        'Implementation-Version': project.version,
+        'Implementation-Vendor': implVendor
+    ) } }
+} }
+
+// This task only for SCM administrator.  Update version and execute this task.
+task updateWrapper(type: Wrapper) { doFirst {
+    assert project.hasProperty('newVersion') :
+            "Property 'newVersion' is required for task 'updateWrapper'"
+    assert project.newVersion == gradle.gradleVersion :
+        "You invoke Gradle system with version $gradle.gradleVersion instead of desired version $project.newVersion"
+} }
+updateWrapper << {
+    gradleVersion = project['newVersion']
+    println 'WARNING:  Merge our customizations into the newly-generated wrapper scripts'
+}
+updateWrapper.description = 'Update Gradle version.  For HSQLDB Administrators.'
+
+/*
+task serialver << {
+    if (!project.hasProperty('className'))
+        throw new InvalidUserDataException(
+                "Property 'className' is required for task 'serialver'")
+
+    String pathSep = System.properties['path.separator']
+    // Could alternatively use Gradle's ExecSpec via exec(...)
+    Process process = new ProcessBuilder([
+        // 'D:\\progra~1\\portableGit-1.7.3.1-p\\bin\\ls',
+        'serialver',
+        '-classpath',
+        ('classes' + pathSep + configurations.runtime.files.join(pathSep)
+                + pathSep + configurations.compile.files.join(pathSep))
+        ,
+        project.property('className')
+    ]).redirectErrorStream(true).start()
+    // Must read input before waitFor-ing
+    process.inputStream.eachLine { println it }
+    process.waitFor()
+    if (process.exitValue()) {
+        //print process.inputStream.text
+        throw new GradleException("'serialver' execution failed")
+    }
+}
+serialver.description = "Generates Java serialversion for specified 'classname'"
+*/
+
+void resolveCheck(configName) {
+    int artCount = configurations[configName].files.size()
+    // Following test works only if deps' transitive is false.
+    if (configurations[configName].allDependencies.size() != artCount) {
+        logger.error(
+                "Didn't resolve all dependencies for config '$configName'.  "
+                + configurations[configName].allDependencies.size()
+                + ' dependencies:\n    ' + configurations[configName]
+                .allDependencies .collect({it.name}).join('\n    ')
+                + '\nbut ' + artCount
+                + ' resolved artifacts:\n    '
+                + configurations[configName].files.collect({it}).join('\n    ')
+                + '\n'
+        )
+        assert false : "Didn't resolve all dependencies."
+    }
+    //configurations[configName].files.each { println '+' + it }
+    //throw new GradleException("Quittin' early")
+    logger.info "$artCount  artifacts resolved"
+}
+
+compileJava.dependsOn << {
+    if (!project.hasProperty('resolveCheck.skip')
+            || !Boolean.parseBoolean(project.property('resolveCheck.skip')))
+        resolveCheck('compile')
+}
+
+// Blaine wants to use a variant of the following to check for tabs in
+// SqlTool's properties and *.txt files.
+/*  X's inserted below or this multi-line comment would not work.
+task checkTabs (dependsOn: war) << {
+    FileTree tree = fileTree(dir: '.')
+    tree.exclude '**X/.*'
+    tree.exclude 'src/main/webapp/images'
+    tree.exclude 'src/main/webapp/css/openid*.css'
+    tree.exclude 'src/main/webapp/js/openid*.js'
+    tree.include  'src/X**'
+    tree.include  'doc/X**'
+    def tabFiles = []
+    tree.each { if (it.text.indexOf('\t') > -1) tabFiles << relativePath(it) }
+    if (tabFiles.size() > 0) println '  ' + tabFiles.join('\n  ')
+}
+*/
+
+task zip(dependsOn: jar, type: Zip) {
+    from configurations.runtime.allArtifacts.files
+    from configurations.runtime
+    from new File(buildDir, 'filtered-docs')
+    into(project.name + '-' + project.version)
+    exclude '**/crimson-*.jar'
+}
+zip.description =
+        'Build zip of end-user executable relames jar with dependencies'
+
+import java.text.SimpleDateFormat
+import org.apache.tools.ant.filters.ReplaceTokens
+import org.apache.tools.ant.filters.FixCrLfFilter
+zip { doFirst {
+    copy {
+        from 'doc'
+        into new File(buildDir, 'filtered-docs')
+        exclude '**/.*/**'
+        filter(ReplaceTokens, tokens: [
+            VERSION: (upstreamVersion
+                    + ' (ADMC Relames v. ' + project.version + ')'),
+            YEAR: new SimpleDateFormat("yyyy").format(new Date())
+        ])
+        //Ask how to do this at Gradle forum:
+        //filter(FixCrLfFilter, eol: 'lf')
+    }
+} }
+
+configurations {
+    compile { transitive = false }
+}
+apply from: 'ivyxml-support.gradle'
+
+// Following 3 tasks copied from
+// http://blog.andresteingress.com/2011/01/14/using-gradle-in-practice/
+// custom tasks for creating source/javadoc jars
+task sourcesJar(type: Jar, dependsOn:classes) {
+     classifier = 'sources'
+     from sourceSets.main.allSource
+}
+sourcesJar.description = 'Build sources jar file'
+
+// Required for Gradle 1.0 milestone 3, but not for milestone 5:
+javadoc.failOnError = false
+ 
+task javadocJar(type: Jar, dependsOn:javadoc) {
+     classifier = 'javadoc'
+     from javadoc.destinationDir
+}
+sourcesJar.description = 'Build javadoc jar file'
+ 
+// add javadoc/source jar tasks as artifacts
+artifacts {
+     archives sourcesJar
+     archives javadocJar
+}
+
+apply from: 'build-dist.gradle'
