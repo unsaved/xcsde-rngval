@@ -6,6 +6,8 @@ apply from: 'common.gradle'
 apply plugin: 'java'
 apply plugin: 'maven'
 
+// This only present because a Java boolean can't be set in a Java properties
+// file.
 compileJava.options.debug = (!project.hasProperty('javac.debug')
             || Boolean.parseBoolean(project.property('javac.debug')))
 sourceCompatibility = '1.2'
@@ -19,21 +21,25 @@ description = 'XML Validator supporting XML Catalogs, Schematron, DTD Macros, RE
 project.rtLibs = null
 jar { doFirst {
     project.rtLibs = []
-    Set<File> runtimeOnlyFiles = configurations.compileOnly.files as Set<File>
-    configurations.runtime.files.collect { project.rtLibs << it.name }
+    configurations.runtime.files.each {
+        if (!it.name.startsWith('serializer-')) project.rtLibs << it.name
+    }
     String implVendor = (project.hasProperty('organization')
                         ? project.organization
                         : System.properties['user.name'])
-    jar { manifest { attributes(
-        'Main-Class': 'com.admc.web.ResolvingSchematronDriver',
-        'Class-Path': project.rtLibs.join(' '),
-        'Specification-Title': 'Supser RELAX NG Validator',
-        'Specification-Version': project.version,
-        'Specification-Vendor': 'Axis Data Management Corp.',
-        'Implementation-Title': 'Executable validator jar',
-        'Implementation-Version': project.version,
-        'Implementation-Vendor': implVendor
-    ) } }
+    jar {
+        manifest { attributes(
+            'Main-Class': 'com.admc.web.ResolvingSchematronDriver',
+            'Class-Path': project.rtLibs.join(' '),
+            'Specification-Title': 'Supser RELAX NG Validator',
+            'Specification-Version': project.version,
+            'Specification-Vendor': 'Axis Data Management Corp.',
+            'Implementation-Title': 'Executable validator jar',
+            'Implementation-Version': project.version,
+            'Implementation-Vendor': implVendor
+        ) }
+        metaInf { from file('doc/LICENSE.txt') }
+    }
 } }
 
 // This task only for SCM administrator.  Update version and execute this task.
@@ -126,6 +132,7 @@ task zip(dependsOn: jar, type: Zip) {
     from configurations.runtime
     from new File(buildDir, 'filtered-docs')
     into(project.name + '-' + project.version)
+    exclude '**/serializer-*'
 }
 zip.description =
         'Build zip of end-user executable xcsde-rngval.jar with dependencies'
@@ -134,22 +141,34 @@ import java.text.SimpleDateFormat
 import org.apache.tools.ant.filters.ReplaceTokens
 import org.apache.tools.ant.filters.FixCrLfFilter
 zip { doFirst {
+    Date now = new Date()
+    assert project.hasProperty('inceptionYear'):
+            "Task 'zip' requires property 'inceptionYear'"
     copy {
         from 'doc'
         into new File(buildDir, 'filtered-docs')
         exclude '**/.*/**'
-        filter(ReplaceTokens, tokens: [
-            VERSION: (upstreamVersion
-                    + ' (ADMC Relames v. ' + project.version + ')'),
-            YEAR: new SimpleDateFormat("yyyy").format(new Date())
-        ])
+        expand(
+            copyrightStartYear: project.inceptionYear,
+            version: project.version,
+            copyrightEndYear: new SimpleDateFormat("yyyy").format(now)
+        )
         //Ask how to do this at Gradle forum:
         //filter(FixCrLfFilter, eol: 'lf')
     }
 } }
 
 dependencies {
-    compile 'com.admc:relames:0.3.0-SNAPSHOT'
+    // Have tried to exclude unnecessary transitive dependencies pulled in
+    // by the xsdlib artifact, but nothing works.
+    // Consequently, we are pulling in 2 extra libs... nuts!
+    compile([
+        'com.admc:relames:0.3.0-SNAPSHOT',
+        'xml-resolver:xml-resolver:1.2'
+    ])
+    runtime([
+        'org.apache.xmlgraphics:batik-ext:1.7'
+    ]) { transitive = false }
 }
 
 // Following 3 tasks copied from
