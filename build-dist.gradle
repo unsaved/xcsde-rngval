@@ -36,7 +36,7 @@ uploadArchives {
             licenses {
                 license {
                     name 'Apache 2.0'
-                    url 'https://github.com/unsaved/superRelaxNGValidator/blob/master/doc/LICENSE.txt'
+                    url 'https://raw.github.com/unsaved/xcsde-rngval/master/doc/LICENSE.txt'
                     distribution 'repo'
                 }
             }
