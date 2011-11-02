@@ -1,5 +1,11 @@
 defaultTasks 'jar'
 
+/**
+ * You can add to what is here by creating a build file name "local.gradle".
+ * If present, it will be applied automatically.
+ * One use case for this is to define additional repositories.
+ */
+
 project['repos.useMaven'] = 'true'
 project['resolveCheck.skip'] = 'true'  // Because using transitive deps
 apply from: 'common.gradle'
@@ -27,9 +33,11 @@ jar { doFirst {
     String implVendor = (project.hasProperty('organization')
                         ? project.organization
                         : System.properties['user.name'])
+    project.metaInf << files('doc/LICENSE.txt')
+    project.metaInf << fileTree(dir: 'src/main/META-INF')
     jar {
         manifest { attributes(
-            'Main-Class': 'com.admc.web.ResolvingSchematronDriver',
+            'Main-Class': 'com.admc.xml.ResolvingSchematronDriver',
             'Class-Path': project.rtLibs.join(' '),
             'Specification-Title': 'Supser RELAX NG Validator',
             'Specification-Version': project.version,
@@ -38,7 +46,6 @@ jar { doFirst {
             'Implementation-Version': project.version,
             'Implementation-Vendor': implVendor
         ) }
-        metaInf { from file('doc/LICENSE.txt') }
     }
 } }
 
@@ -163,7 +170,7 @@ dependencies {
     // by the xsdlib artifact, but nothing works.
     // Consequently, we are pulling in 2 extra libs... nuts!
     compile([
-        'com.admc:relames:0.3.0-SNAPSHOT',
+        'com.admc:relames:0.3.0',
         'xml-resolver:xml-resolver:1.2'
     ])
     runtime([
@@ -193,10 +200,6 @@ sourcesJar.description = 'Build javadoc jar file'
 artifacts {
      archives sourcesJar
      archives javadocJar
-}
-
-repositories {
-    maven{url 'https://oss.sonatype.org/content/groups/staging'}
 }
 
 apply from: 'build-dist.gradle'

@@ -42,9 +42,9 @@ public class ResolvingSchematronDriver extends Thread {
     public static final int EXCEPTION_STATUS = 127;  // Highest shell var value
 
     /**
-     * @returns the final value of the exitStatus as set by the run() method.
+     * @return the final value of the exitStatus as set by the run() method.
      *
-     * @see @run()
+     * @see #run()
      */
 	public static void main(final String[] sa) throws MalformedURLException {
         boolean isVerbose = sa.length > 0 && sa[0].equals("-v");
@@ -56,31 +56,32 @@ public class ResolvingSchematronDriver extends Thread {
                     + "[-v] url.grammar url.xml...");
             System.out.println(
                     "If XML files use Xincludes, specify only the highest-"
-                    + "-level files and the rest");
-            System.out.println("will be validated automatically.");
+                    + "level files and the");
+            System.out.println("rest will be validated automatically.");
             System.out.println("Component files specified directly will fail "
-                    + "validation if they have unresolved");
-            System.out.println("id references.");
+                    + "validation if they have");
+            System.out.println("unresolved id references.");
             System.out.println("All jar files listed in the admc-rs-msv "
                     + "MANIFEST class-path must reside");
-            System.out.println("alongside the admc-rs-msv jar file itself.");
+            System.out.println("alongside the xcsde-rngval jar file itself.");
             return;
         }
-		if (sa.length < (isVerbose ? 3 : 2)) {
+		if (sa.length < (isVerbose ? 3 : 2))
 			throw new IllegalArgumentException(
                     "Run with no arguments for syntax instructions");
-		}
         URL[] inputUrls = new URL[sa.length - (isVerbose ? 2 : 1)];
         for (int i = 0; i < inputUrls.length; i++)
             inputUrls[i] = ResolvingSchematronDriver
-                    .defaultingUrl(sa[i + (isVerbose ? 2 : 1)]); ResolvingSchematronDriver driver = new ResolvingSchematronDriver(
-                ResolvingSchematronDriver
-                .defaultingUrl(sa[isVerbose ? 1 : 0]), inputUrls);
+                    .defaultingUrl(sa[i + (isVerbose ? 2 : 1)]);
+            ResolvingSchematronDriver driver =
+                    new ResolvingSchematronDriver(ResolvingSchematronDriver
+                    .defaultingUrl(sa[isVerbose ? 1 : 0]), inputUrls);
         driver.setVerbose(isVerbose);
         driver.start();
         try {
             driver.join();
         } catch (InterruptedException ie) {
+            throw new RuntimeException(ie);
         }
         System.exit(driver.getExitStatus());
     }
@@ -89,11 +90,8 @@ public class ResolvingSchematronDriver extends Thread {
      * Imperfect URL constructor that defaults to file type.
      */
     static protected URL defaultingUrl(String s) throws MalformedURLException {
-        if (s.indexOf(':') < 2) {
-            // Allow colon in file paths only in drive designation position
-            return new URL("file:" + s);
-        }
-        return new URL(s);
+        return new URL((s.indexOf(':') < 2) ? ("file:" + s) : s);
+        // Allow colon in file paths only in drive designation position
     }
 
     private URL grammarUrl; private URL[] sourceUrls;
