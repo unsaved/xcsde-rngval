@@ -1,6 +1,7 @@
 defaultTasks 'jar'
 
 project['repos.useMaven'] = 'true'
+project['resolveCheck.skip'] = 'true'  // Because using transitive deps
 apply from: 'common.gradle'
 apply plugin: 'java'
 apply plugin: 'maven'
@@ -9,9 +10,7 @@ compileJava.options.debug = (!project.hasProperty('javac.debug')
             || Boolean.parseBoolean(project.property('javac.debug')))
 sourceCompatibility = '1.2'
 targetCompatibility = '1.2'
-description = "Modern build of the the aborted RELAX-NG- + Schematron-capable validator from Sun's MSV project"
-
-configurations { compileOnly }
+description = 'XML Validator supporting XML Catalogs, Schematron, DTD Macros, RELAX NG Schemas'
 
 // De-transify dependencies. We aim for precision, not laziness.
 //for (Configuration c in configurations) c.transitive = false
@@ -21,19 +20,17 @@ project.rtLibs = null
 jar { doFirst {
     project.rtLibs = []
     Set<File> runtimeOnlyFiles = configurations.compileOnly.files as Set<File>
-    configurations.runtime.files.collect {
-        if (!runtimeOnlyFiles.contains(it)) project.rtLibs << it.name
-    }
+    configurations.runtime.files.collect { project.rtLibs << it.name }
     String implVendor = (project.hasProperty('organization')
                         ? project.organization
                         : System.properties['user.name'])
     jar { manifest { attributes(
-        'Main-Class': 'com.sun.msv.schematron.Driver',
+        'Main-Class': 'com.admc.web.ResolvingSchematronDriver',
         'Class-Path': project.rtLibs.join(' '),
-        'Specification-Title': 'Relames',
-        'Specification-Version': project.upstreamVersion,
-        'Specification-Vendor': 'Sun Microsystems, Inc.',
-        'Implementation-Title': 'Relames executable jar',
+        'Specification-Title': 'Supser RELAX NG Validator',
+        'Specification-Version': project.version,
+        'Specification-Vendor': 'Axis Data Management Corp.',
+        'Implementation-Title': 'Executable validator jar',
         'Implementation-Version': project.version,
         'Implementation-Vendor': implVendor
     ) } }
@@ -129,10 +126,9 @@ task zip(dependsOn: jar, type: Zip) {
     from configurations.runtime
     from new File(buildDir, 'filtered-docs')
     into(project.name + '-' + project.version)
-    exclude '**/crimson-*.jar'
 }
 zip.description =
-        'Build zip of end-user executable relames jar with dependencies'
+        'Build zip of end-user executable xcsde-rngval.jar with dependencies'
 
 import java.text.SimpleDateFormat
 import org.apache.tools.ant.filters.ReplaceTokens
@@ -152,10 +148,9 @@ zip { doFirst {
     }
 } }
 
-configurations {
-    compile { transitive = false }
+dependencies {
+    compile 'com.admc:relames:0.3.0-SNAPSHOT'
 }
-apply from: 'ivyxml-support.gradle'
 
 // Following 3 tasks copied from
 // http://blog.andresteingress.com/2011/01/14/using-gradle-in-practice/
@@ -179,6 +174,10 @@ sourcesJar.description = 'Build javadoc jar file'
 artifacts {
      archives sourcesJar
      archives javadocJar
+}
+
+repositories {
+    maven{url 'https://oss.sonatype.org/content/groups/staging'}
 }
 
 apply from: 'build-dist.gradle'
