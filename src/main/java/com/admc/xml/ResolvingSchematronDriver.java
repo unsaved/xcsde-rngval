@@ -46,9 +46,9 @@ public class ResolvingSchematronDriver extends Thread {
      *
      * @see #run()
      */
-	public static void main(final String[] sa) throws MalformedURLException {
+    public static void main(final String[] sa) throws MalformedURLException {
         boolean isVerbose = sa.length > 0 && sa[0].equals("-v");
-		if (sa.length < 1) {
+        if (sa.length < 1) {
             System.out.println(
                     "SYNTAX:  java -Xss512K "
                     + "-Dxml.catalog.files=path/to/catalog.xml "
@@ -66,8 +66,8 @@ public class ResolvingSchematronDriver extends Thread {
             System.out.println("alongside the xcsde-rngval jar file itself.");
             return;
         }
-		if (sa.length < (isVerbose ? 3 : 2))
-			throw new IllegalArgumentException(
+        if (sa.length < (isVerbose ? 3 : 2))
+            throw new IllegalArgumentException(
                     "Run with no arguments for syntax instructions");
         URL[] inputUrls = new URL[sa.length - (isVerbose ? 2 : 1)];
         for (int i = 0; i < inputUrls.length; i++)
@@ -183,5 +183,5 @@ public class ResolvingSchematronDriver extends Thread {
             exitStatus = EXCEPTION_STATUS;
             return;
         }
-	}
+    }
 }
