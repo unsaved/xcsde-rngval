@@ -134,11 +134,11 @@ public class ResolvingSchematronDriver extends Thread {
                 throw new RuntimeException(
                         "Unexpected failure parsing grammar URL '"
                         + grammarUrl + "'");
-		
+
             RelmesVerifier verifier;
             XMLReader reader;
             CatalogResolver catalogResolver = new CatalogResolver();
-		
+
             for (int i = 0; i < sourceUrls.length; i++ ) {
                 verifier = new RelmesVerifier(
                         new REDocumentDeclaration(grammar),
