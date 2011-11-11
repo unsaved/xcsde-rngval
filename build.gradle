@@ -17,7 +17,7 @@ apply plugin: 'maven'
 compileJava.options.debug = (!project.hasProperty('javac.debug')
             || Boolean.parseBoolean(project.property('javac.debug')))
 sourceCompatibility = '1.2'
-targetCompatibility = '1.2'
+targetCompatibility = sourceCompatibility
 description = 'XML Validator supporting XML Catalogs, Schematron, DTD Macros, RELAX NG Schemas'
 
 // De-transify dependencies. We aim for precision, not laziness.
