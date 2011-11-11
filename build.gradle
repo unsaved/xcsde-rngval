@@ -10,7 +10,6 @@ project['repos.useMaven'] = 'true'
 project['resolveCheck.skip'] = 'true'  // Because using transitive deps
 apply from: 'common.gradle'
 apply plugin: 'java'
-apply plugin: 'maven'
 
 // This only present because a Java boolean can't be set in a Java properties
 // file.
@@ -186,11 +185,3 @@ task javadocJar(type: Jar, dependsOn:javadoc) {
      from javadoc.destinationDir
 }
 sourcesJar.description = 'Build javadoc jar file'
- 
-// add javadoc/source jar tasks as artifacts
-artifacts {
-     archives sourcesJar
-     archives javadocJar
-}
-
-apply from: 'build-dist.gradle'

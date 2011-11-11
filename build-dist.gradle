@@ -1,9 +1,18 @@
+apply from: 'build.gradle'
+
 defaultTasks 'uploadArchives'
 
+apply plugin: 'maven'
 apply plugin: 'signing'
 
 signing {
     sign configurations.archives
+}
+ 
+// add javadoc/source jar tasks as artifacts
+artifacts {
+     archives sourcesJar
+     archives javadocJar
 }
 
 uploadArchives {
@@ -56,6 +65,7 @@ uploadArchives { doFirst {
             "Property 'group' is required by 'uploadArchives' task."
     /*  Unfortunately, Maven plugin has no OOTB way to get a proper
      *  organization name into the descriptors.
+     *  TODO:  Test this with Gradle 1.0 milestone 6.
     assert project.hasProperty('organization') && project.organization != '' :
             "Property 'organization' is required by 'uploadArchives' task."
      */
