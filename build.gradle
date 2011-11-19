@@ -1,27 +1,37 @@
 defaultTasks 'jar'
 
-/**
- * You can add to what is here by creating a build file name "local.gradle".
- * If present, it will be applied automatically.
- * One use case for this is to define additional repositories.
- */
-
-project['repos.useMaven'] = 'true'
 project['resolveCheck.skip'] = 'true'  // Because using transitive deps
-apply from: 'common.gradle'
-apply plugin: 'java'
 
-// This only present because a Java boolean can't be set in a Java properties
-// file.
-compileJava.options.debug = (!project.hasProperty('javac.debug')
-            || Boolean.parseBoolean(project.property('javac.debug')))
+buildscript {
+    repositories { mavenCentral() }
+    dependencies {
+        classpath 'com.admc:gradle-javaPropFile-plugin:latest.milestone'
+        classpath 'com.admc:gradle-ivyxml-plugin:latest.milestone'
+    }
+}
+
+apply plugin: 'java'
+apply plugin: 'javaPropFile'
+
+// Defaults that can be overridden with property files:
 sourceCompatibility = '1.2'
 targetCompatibility = sourceCompatibility
-description = 'XML Validator supporting XML Catalogs, Schematron, DTD Macros, RELAX NG Schemas'
+project.setProperty('org.name', System.properties['user.name'])
+project.setProperty('jar.title', 'Customization')
 
+propFileLoader.typeCasting = true
+propFileLoader.traditionalPropertiesInit()
+
+compileJava.options.debug =
+        project.hasProperty('javac.debug') ? javac.debug : true
+
+repositories { mavenCentral() }
 // De-transify dependencies. We aim for precision, not laziness.
 //for (Configuration c in configurations) c.transitive = false
 // We now let 'ivy.xml' configure transitiveness.
+
+task noop << { }
+noop.description = 'Noop task for Gradle testing'
 
 project.rtLibs = null
 jar { doFirst {
@@ -29,29 +39,24 @@ jar { doFirst {
     configurations.runtime.files.each {
         if (!it.name.startsWith('serializer-')) project.rtLibs << it.name
     }
-    String implVendor = (project.hasProperty('organization')
-                        ? project.organization
-                        : System.properties['user.name'])
     project.metaInf << files('doc/LICENSE.txt')
     project.metaInf << fileTree(dir: 'src/main/META-INF')
-    jar {
-        manifest { attributes(
-            'Main-Class': 'com.admc.xml.ResolvingSchematronDriver',
-            'Class-Path': project.rtLibs.join(' '),
-            'Specification-Title': 'Supser RELAX NG Validator',
-            'Specification-Version': project.version,
-            'Specification-Vendor': 'Axis Data Management Corp.',
-            'Implementation-Title': 'Executable validator jar',
-            'Implementation-Version': project.version,
-            'Implementation-Vendor': implVendor
-        ) }
-    }
+    jar { manifest { attributes(
+        'Main-Class': 'com.admc.xml.ResolvingSchematronDriver',
+        'Class-Path': project.rtLibs.join(' '),
+        'Specification-Title': 'Super RELAX NG Validator',
+        'Specification-Version': project.property('spec.version'),
+        'Specification-Vendor': 'Axis Data Management Corp.',
+        'Implementation-Title': project.property('jar.title'),
+        'Implementation-Version': project.version,
+        'Implementation-Vendor': project.property('org.name')
+    ) } }
 } }
 
 // This task only for SCM administrator.  Update version and execute this task.
 task updateWrapper(type: Wrapper) { doFirst {
     assert project.hasProperty('newVersion') :
-            "Property 'newVersion' is required for task 'updateWrapper'"
+        '''Property 'newVersion' is required for task 'updateWrapper'.'''
     assert project.newVersion == gradle.gradleVersion :
         "You invoke Gradle system with version $gradle.gradleVersion instead of desired version $project.newVersion"
 } }
@@ -171,9 +176,6 @@ dependencies {
     ]) { transitive = false }
 }
 
-// Following 3 tasks copied from
-// http://blog.andresteingress.com/2011/01/14/using-gradle-in-practice/
-// custom tasks for creating source/javadoc jars
 task sourcesJar(type: Jar, dependsOn:classes) {
      classifier = 'sources'
      from sourceSets.main.allSource
