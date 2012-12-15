@@ -14,13 +14,13 @@ apply plugin: 'signing'
 apply from: 'build.gradle'
 defaultTasks 'uploadArchives'
 
-signing {
-    sign configurations.archives
-}
-
 artifacts {
      archives sourcesJar
      archives javadocJar
+}
+
+signing {
+    sign configurations.archives
 }
 
 configurations { deployJars }
